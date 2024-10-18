@@ -133,7 +133,7 @@ STATICFILES_DIRS = [
 ]
 
 # アップロードされたファイルを保存するディレクトリ
-MEDIA_ROOT = os.path.join(BASE_DIR, 'test', 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # アップロードされたファイルにアクセスするためのURLパス
 MEDIA_URL = '/media/'
