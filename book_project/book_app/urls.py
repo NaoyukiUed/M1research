@@ -9,4 +9,4 @@ urlpatterns = [
     path('form/', views.upload_profile, name='form'),
     path('success/url/', views.success_view, name='upload_success'),
     path('profiles/', views.profile_list_view, name='profile_list'),  # 一覧表示
-] + static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0]) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
