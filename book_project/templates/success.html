@@ -1,0 +1,7 @@
+{% if profile.profile_image %}
+    <h2>{{ profile.name }}のプロフィール画像:</h2>
+    <img src="{{ MEDIA_URL }}{{ profile.profile_image.url }}" alt="{{ profile.name }}'s Image">
+{% else %}
+    {{ profile }}
+    <p>画像がアップロードされていません。</p>
+{% endif %}

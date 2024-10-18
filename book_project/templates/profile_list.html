@@ -1,0 +1,17 @@
+<h2>プロフィール一覧</h2>
+<ul>
+    {% for profile in profiles %}
+        <li>
+            <strong>名前:</strong> {{ profile.name }} <br>
+            {% if profile.profile_image %}
+                <strong>プロフィール画像:</strong> <img src= "http://127.0.0.1:8000/test{{ profile.profile_image.url }}" alt="http://127.0.0.1:8000/test{{ profile.profile_image.url }}" width="100">
+                http://127.0.0.1:8000/test{{profile.profile_image.url}}
+            {% else %}
+                <strong>プロフィール画像:</strong> 画像がアップロードされていません
+            {% endif %}
+            <br><strong>ID:</strong> {{ profile.id }}
+        </li>
+    {% empty %}
+        <li>プロフィールが存在しません。</li>
+    {% endfor %}
+</ul>
