@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF List</title>
+</head>
+<body>
+    <h2>アップロードされたPDF一覧</h2>
+    <ul>
+        {% for document in documents %}
+            <li>
+                <a href="{{ document.pdf_file.url }}">{{ document.title }}</a> (アップロード日: {{ document.uploaded_at }})
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

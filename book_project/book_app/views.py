@@ -5,8 +5,8 @@ import os
 from django.conf import settings
 import urllib.parse
 from django.shortcuts import render, redirect
-from .forms import ProfileForm
-from .models import Profile
+from .forms import ProfileForm, DocumentForm
+from .models import Profile, Document
 
 def index(request):
     return render(request, 'book_cat_utf8_noruby.html')
@@ -49,6 +49,20 @@ def success_view(request):
 def profile_list_view(request):
     profiles = Profile.objects.all()  # すべてのProfileを取得
     return render(request, 'profile_list.html', {'profiles': profiles})
+
+def upload_pdf(request):
+    if request.method == 'POST':
+        form = DocumentForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
+    else:
+        form = DocumentForm()
+    return render(request, 'upload_pdf.html', {'form': form})
+
+def pdf_list(request):
+    documents = Document.objects.all()
+    return render(request, 'pdf_list.html', {'documents': documents})
 
 
 # Create your views here.
