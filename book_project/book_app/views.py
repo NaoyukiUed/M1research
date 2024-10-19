@@ -4,10 +4,14 @@ from django.urls import reverse
 import os
 from django.conf import settings
 import urllib.parse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ProfileForm, DocumentForm
 from .models import Profile, Document
 import PyPDF2
+import openai
+from openai import OpenAI
+
+
 
 def index(request):
     return render(request, 'book_cat_utf8_noruby.html')
@@ -60,6 +64,8 @@ def upload_pdf(request):
             pdf_file = request.FILES['pdf_file']
             text_content = extract_text_from_pdf(pdf_file)
             document.text_content = text_content  # 抽出した文字データを保存
+            summary = summarize_text(text_content)
+            document.text_summary = summary
             document.save()  # データベースに保存
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
     else:
@@ -76,5 +82,28 @@ def extract_text_from_pdf(pdf_file):
     for page in pdf_reader.pages:
         text += page.extract_text() or ""
     return text
+
+def summarize_text(text, model="gpt-3.5-turbo"):
+    client = OpenAI()
+    # ChatGPT APIの呼び出し
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "あなたは専門家です。日本語で出力してください。"},
+            {"role": "user", "content": f"以下の内容を要約してください:\n\n{text}"}
+        ],
+        # max_tokens=100,  # 要約結果のトークン数の制限
+        temperature=0.5  # 出力の多様性の調整
+    )
+    print(response)
+    # 返答メッセージの抽出
+    summary = response.choices[0].message.content
+    return summary
+
+
+def document_detail(request, pk):
+    document = get_object_or_404(Document, pk=pk)
+    return render(request, 'document_detail.html', {'document': document})
+
 
 # Create your views here.

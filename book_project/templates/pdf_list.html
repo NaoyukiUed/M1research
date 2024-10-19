@@ -3,19 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <title>PDF List</title>
+    <!-- BootstrapのCDN -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h2>アップロードされたPDF一覧</h2>
-    <ul>
-        {% for document in documents %}
-            <li>
-                <h3>{{ document.title }}</h3>
-                <p>アップロード日: {{ document.uploaded_at }}</p>
-                <a href="{{ document.pdf_file.url }}">PDFファイルをダウンロード</a>
-                <p><strong>抽出されたテキスト:</strong></p>
-                <pre>{{ document.text_content }}</pre>
-            </li>
-        {% endfor %}
-    </ul>
+    <div class="container mt-4">
+        <h2 class="mb-4">アップロードされたPDF一覧</h2>
+        <div class="row">
+            {% for document in documents %}
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ document.title }}</h5>
+                            <p class="card-text">アップロード日: {{ document.uploaded_at }}</p>
+                            <a href="{% url 'document_detail' document.pk %}" class="btn btn-primary">詳細を見る</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- BootstrapのJSと依存するPopper.jsのCDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ document.title }}</title>
+    <!-- BootstrapのCDN -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- 上部にタイトルとアップロード日を表示 -->
+        <div class="row">
+            <div class="col-12">
+                <h2>{{ document.title }}</h2>
+                <p>アップロード日: {{ document.uploaded_at }}</p>
+            </div>
+        </div>
+
+        <!-- 左右に分けてレイアウト -->
+        <div class="row mt-4">
+            <!-- 左半分: PDFの要約 -->
+            <div class="col-md-6">
+                <h4>PDFの要約</h4>
+                <pre>{{ document.text_summary }}</pre> <!-- PDFから抽出されたテキスト -->
+            </div>
+
+            <!-- 右半分: AIとの対話スペース -->
+            <div class="col-md-6">
+                <h4>AIとの対話</h4>
+                <form id="chat-form">
+                    <div class="form-group">
+                        <label for="user-input">質問を入力してください:</label>
+                        <textarea id="user-input" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">送信</button>
+                </form>
+                
+                <!-- AIとの対話結果を表示 -->
+                <div id="chat-response" class="mt-4">
+                    <h5>AIの応答:</h5>
+                    <p id="ai-response-text">ここにAIの応答が表示されます。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BootstrapのJSと依存するPopper.jsのCDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- JavaScriptでフォームの送信処理 -->
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // ページのリロードを防止
+
+            // フォームからの入力内容を取得
+            const userInput = document.getElementById('user-input').value;
+
+            // AIへのリクエスト処理（仮想的な処理です。バックエンドとの通信は別途設定が必要です）
+            // ここでは仮に、固定された応答を表示するようにしています。
+            document.getElementById('ai-response-text').textContent = '仮の応答: ' + userInput;
+        });
+    </script>
+</body>
+</html>

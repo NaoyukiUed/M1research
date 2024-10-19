@@ -11,4 +11,5 @@ urlpatterns = [
     path('profiles/', views.profile_list_view, name='profile_list'),  # 一覧表示
     path('upload/', views.upload_pdf, name='upload_pdf'),
     path('pdfs/', views.pdf_list, name='pdf_list'),
+    path('document/<int:pk>/', views.document_detail, name='document_detail'),
 ] + static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
