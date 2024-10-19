@@ -7,6 +7,7 @@ import urllib.parse
 from django.shortcuts import render, redirect
 from .forms import ProfileForm, DocumentForm
 from .models import Profile, Document
+import PyPDF2
 
 def index(request):
     return render(request, 'book_cat_utf8_noruby.html')
@@ -54,7 +55,12 @@ def upload_pdf(request):
     if request.method == 'POST':
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            document = form.save(commit=False)  # まだデータベースに保存しない
+            # PDFから文字データを抽出
+            pdf_file = request.FILES['pdf_file']
+            text_content = extract_text_from_pdf(pdf_file)
+            document.text_content = text_content  # 抽出した文字データを保存
+            document.save()  # データベースに保存
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
     else:
         form = DocumentForm()
@@ -64,5 +70,11 @@ def pdf_list(request):
     documents = Document.objects.all()
     return render(request, 'pdf_list.html', {'documents': documents})
 
+def extract_text_from_pdf(pdf_file):
+    pdf_reader = PyPDF2.PdfReader(pdf_file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() or ""
+    return text
 
 # Create your views here.

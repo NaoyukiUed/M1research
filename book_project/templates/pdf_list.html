@@ -9,7 +9,11 @@
     <ul>
         {% for document in documents %}
             <li>
-                <a href="{{ document.pdf_file.url }}">{{ document.title }}</a> (アップロード日: {{ document.uploaded_at }})
+                <h3>{{ document.title }}</h3>
+                <p>アップロード日: {{ document.uploaded_at }}</p>
+                <a href="{{ document.pdf_file.url }}">PDFファイルをダウンロード</a>
+                <p><strong>抽出されたテキスト:</strong></p>
+                <pre>{{ document.text_content }}</pre>
             </li>
         {% endfor %}
     </ul>
