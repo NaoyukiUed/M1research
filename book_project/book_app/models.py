@@ -15,3 +15,17 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+    
+class Interaction(models.Model):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('ai', 'AI'),
+    ]
+
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='interactions')
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_role_display()}: {self.message[:50]}..."  # メッセージの最初の50文字を表示

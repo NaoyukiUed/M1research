@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ document.title }}</title>
+    <title>Chat with AI</title>
     <!-- BootstrapのCDN -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -45,37 +45,51 @@
             border-top: 1px solid #ddd;
             padding: 10px;
         }
+        .list-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000; /* 十分高い値を設定 */
+        }
     </style>
 </head>
 <body>
     <div class="container mt-4">
+        <!-- リストページへのリンクを右上に追加 -->
+        <div class="list-link">
+          <a href="{% url 'pdf_list' %}" class="btn btn-secondary">リストページへ</a>
+      </div>
         <!-- 上部にタイトルとアップロード日を表示 -->
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-12">
-                <h2>{{ document.title }}</h2>
+                <h2>
+                  <a href="{{ document.pdf_file.url }}" target="_blank">{{ document.title }}</a>
+                </h2>
                 <p>アップロード日: {{ document.uploaded_at }}</p>
             </div>
         </div>
 
         <!-- 左右に分けてレイアウト -->
-        <div class="row mt-4">
+        <div class="row">
             <!-- 左半分: PDFの要約 -->
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <h4>PDFの要約</h4>
-                <pre>{{ document.text_content }}</pre> <!-- PDFから抽出されたテキスト -->
+                <div class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
+                    <div>{{ document.text_summary }}</div>
+                </div>
             </div>
 
             <!-- 右半分: AIとの対話スペース -->
-            <div class="col-md-6 d-flex flex-column">
+            <div class="col-md-7 d-flex flex-column">
                 <h4>AIとの対話</h4>
                 <!-- チャットのコンテナ -->
-                <div id="chat-container" class="chat-container mb-3">
+                <div style="white-space: pre-wrap;" id="chat-container" class="chat-container mb-3">
                     <!-- メッセージが表示される領域 -->
                     <!-- ここにJavaScriptでメッセージを追加します -->
                 </div>
 
                 <!-- 入力フォーム -->
-                <div class="chat-input">
+                <div class="chat-input mt-auto">
                     <form id="chat-form" class="d-flex">
                         <textarea id="user-input" class="form-control" rows="1" placeholder="質問を入力..."></textarea>
                         <button type="submit" class="btn btn-primary ml-2">送信</button>
@@ -83,6 +97,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- 隠しフィールドでDocument IDを保持 -->
+        <input type="hidden" id="document-id" value="{{ document.id }}">
     </div>
 
     <!-- BootstrapのJSと依存するPopper.jsのCDN -->
@@ -96,15 +113,35 @@
             event.preventDefault(); // ページのリロードを防止
 
             // フォームからの入力内容を取得
-            const userInput = document.getElementById('user-input').value;
+            const userInput = document.getElementById('user-input').value.trim();
+            const documentId = document.getElementById('document-id').value; // ドキュメントIDを取得
 
-            if (userInput.trim() !== "") {
+            if (userInput !== "") {
                 // ユーザーの発言を表示
                 addMessage(userInput, 'user');
 
-                // 仮のAI応答（実際にはサーバーからの応答を受け取る処理を行う）
-                const aiResponse = '仮の応答: ' + userInput;
-                addMessage(aiResponse, 'ai');
+                // APIにメッセージを送信
+                fetch(`/test/chat-with-ai/${documentId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') // CSRFトークンを送信
+                    },
+                    body: JSON.stringify({ message: userInput })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.response) {
+                        // AIの応答を表示
+                        addMessage(data.response, 'ai');
+                    } else if (data.error) {
+                        addMessage("エラー: " + data.error, 'ai');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addMessage("エラーが発生しました。", 'ai');
+                });
 
                 // 入力エリアをクリア
                 document.getElementById('user-input').value = "";
@@ -127,6 +164,36 @@
 
             // 自動的にスクロール
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // CSRFトークンを取得するための関数
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // ページ読み込み時に過去のチャット履歴を取得
+        window.onload = function() {
+            const documentId = document.getElementById('document-id').value; // ドキュメントIDを取得
+
+            fetch(`/test/get-chat-history/${documentId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const chatHistory = data.chat_history;
+                    chatHistory.forEach(item => {
+                        addMessage(item.message, item.role);
+                    });
+                });
         }
     </script>
 </body>

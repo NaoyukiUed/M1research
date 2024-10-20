@@ -6,10 +6,13 @@ from django.conf import settings
 import urllib.parse
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ProfileForm, DocumentForm
-from .models import Profile, Document
+from .models import Profile, Document, Interaction
 import PyPDF2
 import openai
 from openai import OpenAI
+from django.views.decorators.csrf import csrf_exempt
+import json
+from django.http import JsonResponse
 
 
 
@@ -83,7 +86,7 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text() or ""
     return text
 
-def summarize_text(text, model="gpt-3.5-turbo"):
+def summarize_text(text, model="gpt-4o-mini"):
     client = OpenAI()
     # ChatGPT APIの呼び出し
     response = client.chat.completions.create(
@@ -95,7 +98,6 @@ def summarize_text(text, model="gpt-3.5-turbo"):
         # max_tokens=100,  # 要約結果のトークン数の制限
         temperature=0.5  # 出力の多様性の調整
     )
-    print(response)
     # 返答メッセージの抽出
     summary = response.choices[0].message.content
     return summary
@@ -104,6 +106,59 @@ def summarize_text(text, model="gpt-3.5-turbo"):
 def document_detail(request, pk):
     document = get_object_or_404(Document, pk=pk)
     return render(request, 'document_detail.html', {'document': document})
+
+@csrf_exempt  # 開発時のみ推奨。本番環境ではCSRFトークンを適切に処理
+def chat_with_ai(request, document_id):
+    if request.method == 'POST':
+        # JSONデータを取得
+        data = json.loads(request.body)
+        user_message = data.get('message', '')
+
+        # 指定されたドキュメントを取得
+        document = Document.objects.get(pk=document_id)
+
+        # ユーザーメッセージを保存
+        Interaction.objects.create(document=document, role='user', message=user_message)
+
+        try:
+            client = OpenAI()
+            model="gpt-4o-mini"
+            # ChatGPT APIの呼び出し
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "あなたは専門家です。日本語で出力してください。"},
+                    {"role": "user", "content": f"以下の質問に回答してください。:\n\n{user_message}\n\nまた、回答の際には以下の内容を参考にしてください\n\n{document.text_content}"}
+                ],
+                # max_tokens=100,  # 要約結果のトークン数の制限
+                temperature=0.5  # 出力の多様性の調整
+            )
+            # 返答メッセージの抽出
+            ai_message = response.choices[0].message.content
+
+            # AIのメッセージを保存
+            Interaction.objects.create(document=document, role='ai', message=ai_message)
+
+            return JsonResponse({'response': ai_message})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+# 過去のやり取りを取得するビュー
+def get_chat_history(request, document_id):
+    document = Document.objects.get(pk=document_id)
+    chat_messages = document.interactions.all().order_by('timestamp')
+    chat_data = [
+        {'role': message.role, 'message': message.message, 'timestamp': message.timestamp}
+        for message in chat_messages
+    ]
+    return JsonResponse({'chat_history': chat_data})
+
+def document_delete(request, pk):
+    document = get_object_or_404(Document, pk=pk)
+    if request.method == "POST":
+        document.delete()
+        return redirect('pdf_list')  # 削除後、リストページにリダイレクト
+    return redirect(reverse('document_detail', args=[pk]))
 
 
 # Create your views here.

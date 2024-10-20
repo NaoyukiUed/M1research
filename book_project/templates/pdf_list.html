@@ -5,9 +5,21 @@
     <title>PDF List</title>
     <!-- BootstrapのCDN -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .list-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000; /* 十分高い値を設定 */
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-4">
+        <!-- リストページへのリンクを右上に追加 -->
+        <div class="list-link">
+            <a href="{% url 'upload_pdf' %}" class="btn btn-secondary">アップロード</a>
+        </div>
         <h2 class="mb-4">アップロードされたPDF一覧</h2>
         <div class="row">
             {% for document in documents %}
@@ -16,7 +28,12 @@
                         <div class="card-body">
                             <h5 class="card-title">{{ document.title }}</h5>
                             <p class="card-text">アップロード日: {{ document.uploaded_at }}</p>
-                            <a href="{% url 'document_detail' document.pk %}" class="btn btn-primary">詳細を見る</a>
+                            <a href="{% url 'document_detail' document.pk %}" class="btn btn-primary d-inline-block">詳細を見る</a>
+                            <!-- 削除ボタンを追加 -->
+                            <form method="POST" action="{% url 'document_delete' document.pk %}" class="mt-2 d-inline-block">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('本当に削除しますか？');">削除</button>
+                            </form>
                         </div>
                     </div>
                 </div>
