@@ -5,6 +5,47 @@
     <title>{{ document.title }}</title>
     <!-- BootstrapのCDN -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+        }
+        .message {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.user .text {
+            background-color: #dcf8c6;
+            text-align: right;
+        }
+        .message.ai {
+            justify-content: flex-start;
+        }
+        .message .text {
+            max-width: 60%;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .message.user .text {
+            border-top-right-radius: 0;
+        }
+        .message.ai .text {
+            border-top-left-radius: 0;
+            background-color: #f1f0f0;
+        }
+        .chat-input {
+            width: 100%;
+            border-top: 1px solid #ddd;
+            padding: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-4">
@@ -21,24 +62,24 @@
             <!-- 左半分: PDFの要約 -->
             <div class="col-md-6">
                 <h4>PDFの要約</h4>
-                <pre>{{ document.text_summary }}</pre> <!-- PDFから抽出されたテキスト -->
+                <pre>{{ document.text_content }}</pre> <!-- PDFから抽出されたテキスト -->
             </div>
 
             <!-- 右半分: AIとの対話スペース -->
-            <div class="col-md-6">
+            <div class="col-md-6 d-flex flex-column">
                 <h4>AIとの対話</h4>
-                <form id="chat-form">
-                    <div class="form-group">
-                        <label for="user-input">質問を入力してください:</label>
-                        <textarea id="user-input" class="form-control" rows="3"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">送信</button>
-                </form>
-                
-                <!-- AIとの対話結果を表示 -->
-                <div id="chat-response" class="mt-4">
-                    <h5>AIの応答:</h5>
-                    <p id="ai-response-text">ここにAIの応答が表示されます。</p>
+                <!-- チャットのコンテナ -->
+                <div id="chat-container" class="chat-container mb-3">
+                    <!-- メッセージが表示される領域 -->
+                    <!-- ここにJavaScriptでメッセージを追加します -->
+                </div>
+
+                <!-- 入力フォーム -->
+                <div class="chat-input">
+                    <form id="chat-form" class="d-flex">
+                        <textarea id="user-input" class="form-control" rows="1" placeholder="質問を入力..."></textarea>
+                        <button type="submit" class="btn btn-primary ml-2">送信</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -57,10 +98,36 @@
             // フォームからの入力内容を取得
             const userInput = document.getElementById('user-input').value;
 
-            // AIへのリクエスト処理（仮想的な処理です。バックエンドとの通信は別途設定が必要です）
-            // ここでは仮に、固定された応答を表示するようにしています。
-            document.getElementById('ai-response-text').textContent = '仮の応答: ' + userInput;
+            if (userInput.trim() !== "") {
+                // ユーザーの発言を表示
+                addMessage(userInput, 'user');
+
+                // 仮のAI応答（実際にはサーバーからの応答を受け取る処理を行う）
+                const aiResponse = '仮の応答: ' + userInput;
+                addMessage(aiResponse, 'ai');
+
+                // 入力エリアをクリア
+                document.getElementById('user-input').value = "";
+            }
         });
+
+        function addMessage(message, sender) {
+            const chatContainer = document.getElementById('chat-container');
+
+            // メッセージの要素を作成
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender);
+
+            const textElement = document.createElement('div');
+            textElement.classList.add('text');
+            textElement.textContent = message;
+
+            messageElement.appendChild(textElement);
+            chatContainer.appendChild(messageElement);
+
+            // 自動的にスクロール
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
     </script>
 </body>
 </html>
