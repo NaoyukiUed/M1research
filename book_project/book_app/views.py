@@ -121,15 +121,22 @@ def chat_with_ai(request, document_id):
         Interaction.objects.create(document=document, role='user', message=user_message)
 
         try:
+            past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
+            messages = [{"role": "system", "content": "あなたは専門家です。日本語で出力してください。"}]
+            for interaction in past_interactions:
+                if interaction.role == 'ai':
+                    interaction.role = 'assistant'
+                messages.append({"role": interaction.role, "content": interaction.message})
+
+            # 新しいユーザーメッセージを追加
+            messages.append({"role": "user", "content": user_message})
+            
             client = OpenAI()
             model="gpt-4o-mini"
             # ChatGPT APIの呼び出し
             response = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": "あなたは専門家です。日本語で出力してください。"},
-                    {"role": "user", "content": f"以下の質問に回答してください。:\n\n{user_message}\n\nまた、回答の際には以下の内容を参考にしてください\n\n{document.text_content}"}
-                ],
+                messages=messages,
                 # max_tokens=100,  # 要約結果のトークン数の制限
                 temperature=0.5  # 出力の多様性の調整
             )
