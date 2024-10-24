@@ -13,6 +13,7 @@ from openai import OpenAI
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
+import markdown
 
 
 
@@ -63,11 +64,16 @@ def upload_pdf(request):
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
             document = form.save(commit=False)  # まだデータベースに保存しない
+            # 知りたいことを取得
+            point_1 = form.cleaned_data.get('point_1', '')
+            point_2 = form.cleaned_data.get('point_2', '')
+            point_3 = form.cleaned_data.get('point_3', '')
+            points = [point_1, point_2, point_3]  # 知りたいことをリストにまとめる
             # PDFから文字データを抽出
             pdf_file = request.FILES['pdf_file']
             text_content = extract_text_from_pdf(pdf_file)
             document.text_content = text_content  # 抽出した文字データを保存
-            summary = summarize_text(text_content)
+            summary = summarize_text(text_content, points = points)
             document.text_summary = summary
             document.save()  # データベースに保存
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
@@ -86,20 +92,27 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text() or ""
     return text
 
-def summarize_text(text, model="gpt-4o-mini"):
+def summarize_text(text, points=None, model="gpt-4o-mini"):
     client = OpenAI()
+
+    if points:
+        points_text = "\n".join(f"- {point}" for point in points if point)
+    else:
+        points_text = "特に知りたいことは指定されていません。"
+
     # ChatGPT APIの呼び出し
     response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": "あなたは専門家です。日本語で出力してください。"},
-            {"role": "user", "content": f"以下の内容を要約してください:\n\n{text}"}
+            {"role": "user", "content": f"以下の内容を要約してください:\n\n{text}。また、以下の知りたいことを考慮に入れてください:\n{points_text}"}
         ],
         # max_tokens=100,  # 要約結果のトークン数の制限
         temperature=0.5  # 出力の多様性の調整
     )
     # 返答メッセージの抽出
     summary = response.choices[0].message.content
+    summary = markdown.markdown(summary)
     return summary
 
 
@@ -142,9 +155,11 @@ def chat_with_ai(request, document_id):
             )
             # 返答メッセージの抽出
             ai_message = response.choices[0].message.content
+            ai_message = markdown.markdown(ai_message)
 
             # AIのメッセージを保存
             Interaction.objects.create(document=document, role='ai', message=ai_message)
+
 
             return JsonResponse({'response': ai_message})
         except Exception as e:

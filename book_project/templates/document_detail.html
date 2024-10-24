@@ -66,6 +66,18 @@
                   <a href="{{ document.pdf_file.url }}" target="_blank">{{ document.title }}</a>
                 </h2>
                 <p>アップロード日: {{ document.uploaded_at }}</p>
+                <h3>知りたいこと:</h3>
+                <ul>
+                    {% if document.point_1 %}
+                        <li>{{ document.point_1 }}</li>
+                    {% endif %}
+                    {% if document.point_2 %}
+                        <li>{{ document.point_2 }}</li>
+                    {% endif %}
+                    {% if document.point_3 %}
+                        <li>{{ document.point_3 }}</li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
 
@@ -74,7 +86,7 @@
             <!-- 左半分: PDFの要約 -->
             <div class="col-md-5">
                 <h4>PDFの要約</h4>
-                <div class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
+                <div id="summary-container" class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
                     <div>{{ document.text_summary }}</div>
                 </div>
             </div>
@@ -109,6 +121,7 @@
 
     <!-- JavaScriptでフォームの送信処理 -->
     <script>
+        document.getElementById('summary-container').innerHTML = "{{ document.text_summary|escapejs }}";
         document.getElementById('chat-form').addEventListener('submit', function(event) {
             event.preventDefault(); // ページのリロードを防止
 
@@ -149,22 +162,28 @@
         });
 
         function addMessage(message, sender) {
-            const chatContainer = document.getElementById('chat-container');
+    const chatContainer = document.getElementById('chat-container');
 
-            // メッセージの要素を作成
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', sender);
+    // メッセージの要素を作成
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', sender);
 
-            const textElement = document.createElement('div');
-            textElement.classList.add('text');
-            textElement.textContent = message;
+    // AIの返答がHTML形式なのでinnerHTMLを使用
+    const textElement = document.createElement('div');
+    textElement.classList.add('text');
 
-            messageElement.appendChild(textElement);
-            chatContainer.appendChild(messageElement);
+    if (sender === 'ai') {
+        textElement.innerHTML = message;  // HTML形式をそのまま表示
+    } else {
+        textElement.textContent = message;  // ユーザーのメッセージはテキストとして表示
+    }
 
-            // 自動的にスクロール
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+    messageElement.appendChild(textElement);
+    chatContainer.appendChild(messageElement);
+
+    // チャットコンテナのスクロールを最下部に
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
         // CSRFトークンを取得するための関数
         function getCookie(name) {

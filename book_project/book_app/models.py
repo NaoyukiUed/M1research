@@ -12,6 +12,9 @@ class Document(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     text_content = models.TextField(blank=True)
     text_summary = models.TextField(blank=True)
+    point_1 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 1
+    point_2 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 2
+    point_3 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 3
 
     def __str__(self):
         return self.title
