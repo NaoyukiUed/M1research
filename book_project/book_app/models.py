@@ -12,9 +12,11 @@ class Document(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     text_content = models.TextField(blank=True)
     text_summary = models.TextField(blank=True)
-    point_1 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 1
-    point_2 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 2
-    point_3 = models.CharField(max_length=255, blank=True, null=True)  # 知りたいこと 3
+    question_list = models.JSONField(default=list, blank=True)
+    question_num = models.IntegerField(default=0,blank=True)
+    question_progress = models.IntegerField(default=0,blank=True)
+    subquestion_list = models.JSONField(default=list, blank=True)
+    subquestion_num = models.IntegerField(default=0,blank=True)
 
     def __str__(self):
         return self.title

@@ -85,6 +85,9 @@ def upload_pdf(request):
             document.text_content = text_content  # 抽出した文字データを保存
             summary = summarize_text(text_content, points = points)
             document.text_summary = summary
+            document.question_list = form.cleaned_data['question_list']
+
+            document.question_num = 0
             document.save()  # データベースに保存
             similar_pages = find_relevant_pages(pdf_file, point_1)
             print(similar_pages)
@@ -195,6 +198,13 @@ def chat_with_ai(request, document_id):
         # ユーザーメッセージを保存
         Interaction.objects.create(document=document, role='user', message=user_message)
 
+        if document.question_progress == 0:
+            ai_message = document.question_list[document.question_num]
+            Interaction.objects.create(document=document, role='ai', message=ai_message)
+            document.question_progress = 1
+            document.save()
+            return JsonResponse({'response': ai_message})
+
         try:
             past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
             messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下の情報を参考にしてください。{document.text_content}"}]
@@ -204,7 +214,7 @@ def chat_with_ai(request, document_id):
                 messages.append({"role": interaction.role, "content": interaction.message})
 
             # 新しいユーザーメッセージを追加
-            messages.append({"role": "user", "content": user_message})
+            messages.append({"role": "user", "content": f'以下の内容が正しい内容を述べているか評価してください。また、不足している部分や補足すべきな点があればその内容に関して問う質問を一つ作成してください。{user_message}'})
             
             client = OpenAI()
             model="gpt-4o-mini"
@@ -221,6 +231,9 @@ def chat_with_ai(request, document_id):
 
             # AIのメッセージを保存
             Interaction.objects.create(document=document, role='ai', message=ai_message)
+            # document.question_progress = 0
+            # document.question_num = document.question_num + 1
+            document.save()
 
 
             return JsonResponse({'response': ai_message})

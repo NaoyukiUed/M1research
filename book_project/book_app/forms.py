@@ -14,3 +14,16 @@ class DocumentForm(forms.ModelForm):
     class Meta:
         model = Document
         fields = ['title', 'pdf_file', 'point_1', 'point_2', 'point_3']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # 質問フィールドをまとめてリストとして保存
+        questions = []
+        if cleaned_data.get('point_1'):
+            questions.append(cleaned_data['point_1'])
+        if cleaned_data.get('point_2'):
+            questions.append(cleaned_data['point_2'])
+        if cleaned_data.get('point_3'):
+            questions.append(cleaned_data['point_3'])
+        cleaned_data['question_list'] = questions  # リストにまとめた質問をcleaned_dataに追加
+        return cleaned_data
