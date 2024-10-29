@@ -14,6 +14,16 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
 import markdown
+import numpy as np
+from numpy.linalg import norm
+from pydantic import BaseModel
+
+class Step(BaseModel):
+    explanation: str
+
+class Reasoning(BaseModel):
+    steps: list[Step]
+    answer: bool
 
 
 
@@ -76,6 +86,8 @@ def upload_pdf(request):
             summary = summarize_text(text_content, points = points)
             document.text_summary = summary
             document.save()  # データベースに保存
+            similar_pages = find_relevant_pages(pdf_file, point_1)
+            print(similar_pages)
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
     else:
         form = DocumentForm()
@@ -91,6 +103,56 @@ def extract_text_from_pdf(pdf_file):
     for page in pdf_reader.pages:
         text += page.extract_text() or ""
     return text
+
+def extract_text_by_page(pdf_file):
+    reader = PyPDF2.PdfReader(pdf_file)
+    page_texts = []
+    for page_num in range(len(reader.pages)):
+        page = reader.pages[page_num]
+        text = page.extract_text()
+        page_texts.append(text)
+    return page_texts
+
+def get_embeddings(texts, model='text-embedding-3-small'):
+    client = OpenAI()
+    embeddings = []
+    for text in texts:
+        text = text.replace('\n','')
+        response = client.embeddings.create(input = [text], model = model).data[0].embedding
+        embeddings.append(response)
+    return np.array(embeddings)
+
+def get_question_embedding(question,model='text-embedding-3-small'):
+    client = OpenAI()
+    response = client.embeddings.create(input=[question], model=model)
+    return np.array(response.data[0].embedding)
+
+def cosine_similarity(vec1, vec2):
+    return np.dot(vec1, vec2) / (norm(vec1) * norm(vec2))
+
+def find_similar_pages(page_embeddings, question_embedding, threshold=0.5):
+    similar_pages = []
+    for i, page_embedding in enumerate(page_embeddings):
+        similarity = cosine_similarity(page_embedding, question_embedding)
+        if similarity >= threshold:
+            similar_pages.append((i + 1, similarity))  # ページ番号は1から始まる
+    return similar_pages
+
+def find_relevant_pages(pdf_file, question):
+    # 1. PDFの内容をページごとに分割
+    page_texts = extract_text_by_page(pdf_file)
+    
+    # 2. ページごとの埋め込みを作成
+    page_embeddings = get_embeddings(page_texts)
+    
+    # 3. 質問の埋め込みを作成
+    question_embedding = get_question_embedding(question)
+    
+    # 4. 類似度の計算
+    similar_pages = find_similar_pages(page_embeddings, question_embedding)
+    
+    return similar_pages
+
 
 def summarize_text(text, points=None, model="gpt-4o-mini"):
     client = OpenAI()
@@ -135,7 +197,7 @@ def chat_with_ai(request, document_id):
 
         try:
             past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
-            messages = [{"role": "system", "content": "あなたは専門家です。日本語で出力してください。"}]
+            messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下の情報を参考にしてください。{document.text_content}"}]
             for interaction in past_interactions:
                 if interaction.role == 'ai':
                     interaction.role = 'assistant'
