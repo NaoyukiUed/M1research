@@ -25,6 +25,10 @@ class Reasoning(BaseModel):
     steps: list[Step]
     answer: bool
 
+class Evaluation(BaseModel):
+    comprehension_level: int
+    not_understand: list[str]
+
 
 
 def index(request):
@@ -207,14 +211,14 @@ def chat_with_ai(request, document_id):
 
         try:
             past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
-            messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下の情報を参考にしてください。{document.text_content}"}]
+            messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下のpdfに書かれていた情報を参考にしてください。{document.text_content}"}]
             for interaction in past_interactions:
                 if interaction.role == 'ai':
                     interaction.role = 'assistant'
                 messages.append({"role": interaction.role, "content": interaction.message})
 
             # 新しいユーザーメッセージを追加
-            messages.append({"role": "user", "content": f'以下の内容が正しい内容を述べているか評価してください。また、不足している部分や補足すべきな点があればその内容に関して問う質問を一つ作成してください。{user_message}'})
+            messages.append({"role": "user", "content": f'まず最初に質問に対する回答をpdfの内容を基に簡潔に出力してください。それから、以下の内容が正しい内容を述べているか作成した回答と比較して評価してください。また、不足している部分や補足すべきな点があればその内容に関して問うpdf中に答えが存在する質問を一つ作成してください。もし理解していないと思われる部分があれば、その内容について解説してください。また、もし質問が含まれていれば、その質問に答えてください。{user_message}'})
             
             client = OpenAI()
             model="gpt-4o-mini"
@@ -223,17 +227,21 @@ def chat_with_ai(request, document_id):
                 model=model,
                 messages=messages,
                 # max_tokens=100,  # 要約結果のトークン数の制限
-                temperature=0.5  # 出力の多様性の調整
+                temperature=0.5,  # 出力の多様性の調整
+                # response_format=Evaluation,
             )
             # 返答メッセージの抽出
             ai_message = response.choices[0].message.content
             ai_message = markdown.markdown(ai_message)
+            # comprehension_level = ai_message.comprehension_level
+            # not_understand = ai_message.not_understand
+            # ai_message = f"comprehension_level:{comprehension_level}\n not_understand:{not_understand}"
 
             # AIのメッセージを保存
             Interaction.objects.create(document=document, role='ai', message=ai_message)
             # document.question_progress = 0
             # document.question_num = document.question_num + 1
-            document.save()
+            # document.save()
 
 
             return JsonResponse({'response': ai_message})
