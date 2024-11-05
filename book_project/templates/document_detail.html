@@ -87,7 +87,12 @@
             <div class="col-md-5">
                 <h4>PDFの要約</h4>
                 <div id="summary-container" class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
-                    <div>{{ document.summary }}</div>
+                    {% for content in document.structed_toc.contents %}
+                        <li>
+                            <strong>タイトル:</strong> {{ content.title }}<br>
+                            <strong>説明:</strong> {{ content.description }}
+                        </li>
+                    {% endfor %}
                 </div>
             </div>
 
@@ -121,7 +126,7 @@
 
     <!-- JavaScriptでフォームの送信処理 -->
     <script>
-        document.getElementById('summary-container').innerHTML = "{{ document.toc|escapejs }}";
+        // document.getElementById('summary-container').innerHTML = "{{ document.toc|escapejs }}";
         document.getElementById('chat-form').addEventListener('submit', function(event) {
             event.preventDefault(); // ページのリロードを防止
 

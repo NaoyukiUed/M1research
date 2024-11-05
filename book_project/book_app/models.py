@@ -11,7 +11,7 @@ class Document(models.Model):
     question_progress = models.IntegerField(default=0,blank=True)
     subquestion_list = models.JSONField(default=list, blank=True)
     subquestion_num = models.IntegerField(default=0,blank=True)
-    toc = models.TextField(blank=True)
+    structed_toc = models.JSONField(blank=True, default=list)
 
     def __str__(self):
         return self.title

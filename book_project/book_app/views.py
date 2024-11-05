@@ -72,11 +72,13 @@ def upload_pdf(request):
             document.question_list = form.cleaned_data['question_list']
             document.question_num = 0
             structed_toc = generate_structed_toc(text_content)
-            toc = ''
-            for content in structed_toc.contents:
-                toc = toc + f'<br><h2>{content.title}</h2>'
-                toc = toc + f'<br><p>{content.description}</p>'
-            document.toc = toc
+            document.structed_toc = structed_toc.dict()
+
+            # toc = ''
+            # for content in structed_toc.contents:
+            #     toc = toc + f'<br><h2>{content.title}</h2>'
+            #     toc = toc + f'<br><p>{content.description}</p>'
+            # document.toc = toc
 
             document.save()  # データベースに保存
 
