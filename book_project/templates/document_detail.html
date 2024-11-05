@@ -87,7 +87,7 @@
             <div class="col-md-5">
                 <h4>PDFの要約</h4>
                 <div id="summary-container" class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
-                    <div>{{ document.text_summary }}</div>
+                    <div>{{ document.summary }}</div>
                 </div>
             </div>
 
@@ -121,7 +121,7 @@
 
     <!-- JavaScriptでフォームの送信処理 -->
     <script>
-        document.getElementById('summary-container').innerHTML = "{{ document.text_summary|escapejs }}";
+        document.getElementById('summary-container').innerHTML = "{{ document.toc|escapejs }}";
         document.getElementById('chat-form').addEventListener('submit', function(event) {
             event.preventDefault(); // ページのリロードを防止
 

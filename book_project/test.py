@@ -1,25 +1,31 @@
-from pydantic import BaseModel
+import PyPDF2
 from openai import OpenAI
 
+def extract_text_from_pdf(file_path):
+    # PDFファイルを読み込む
+    with open(file_path, 'rb') as file:
+        pdf_reader = PyPDF2.PdfReader(file)
+        text = ""
+        
+        # 全ページのテキストを抽出
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"  # ページごとに改行を追加
+        
+    return text
+
+# 使用例
+pdf_file_path = 'C:/Users/noyku/Desktop/研究/book_project/2312.10997v5.pdf'  # PDFファイルへのパスを指定
+text_content = extract_text_from_pdf(pdf_file_path)
+# print(text_content)  # 抽出したテキストを表示
+
 client = OpenAI()
-
-class Step(BaseModel):
-    explanation: str
-    output: str
-
-class MathReasoning(BaseModel):
-    steps: list[Step]
-    final_answer: float
-
-completion = client.beta.chat.completions.parse(
-    model="gpt-4o-2024-08-06",
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
     messages=[
-        {"role": "system", "content": "You are a helpful math tutor. Guide the user through the solution step by step."},
-        {"role": "user", "content": "how can I solve 8x + 7 = -23"}
+        {"role": "system", "content": "日本語で出力してください。ユーザの発言にはページ番号や、引用番号、引用先、記号など本文の内容とは関係ない文字や文が多く含まれています。これらの不要なものを取り除いて、本文の内容のみで再度全て出力してください。"},
+        {"role": "user", "content": text_content}
     ],
-    response_format=MathReasoning,
-)
+    )
 
-math_reasoning = completion.choices[0].message.parsed
-
-print(math_reasoning.final_answer)
+summary = response.choices[0].message.content
+print(summary)  # 要約結果を表示

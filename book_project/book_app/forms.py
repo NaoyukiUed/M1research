@@ -1,10 +1,5 @@
 from django import forms
-from .models import Profile, Document
-
-class ProfileForm(forms.ModelForm):
-    class Meta:
-        model = Profile
-        fields = ['name', 'profile_image']
+from .models import Document
 
 class DocumentForm(forms.ModelForm):
     point_1 = forms.CharField(max_length=255, required=False, label="知りたいこと 1")
