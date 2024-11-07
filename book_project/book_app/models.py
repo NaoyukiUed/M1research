@@ -11,6 +11,7 @@ class Document(models.Model):
     question_num = models.IntegerField(default=0,blank=True)
     question_progress = models.IntegerField(default=0,blank=True)
     subquestion_list = models.JSONField(default=list, blank=True)
+    question_stack = models.JSONField(default=list, blank=True)
     subquestion_num = models.IntegerField(default=0,blank=True)
     structed_toc = models.JSONField(blank=True, default=list)
 
