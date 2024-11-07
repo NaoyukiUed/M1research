@@ -29,7 +29,7 @@ class StructedToc(BaseModel):
     contents: list[Content]
 
 class Question(BaseModel):
-    child_num: int
+    child_num: list[int]
     content_id: int
     question: str
     answer: str
@@ -295,7 +295,7 @@ def chat_with_ai(request, document_id):
             document.save()
 
             questions = conversation_content.questions
-            document.question_list = questions.dict()
+            # document.question_list = questions.dict()
             for child in reversed(questions.dict()['questions']):
                 document.question_stack.append(child)
             document.save()
