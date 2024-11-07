@@ -93,6 +93,13 @@
                             <strong>説明:</strong> {{ content.description }}
                         </li>
                     {% endfor %}
+                    {% for question in document.question_list.questions %}
+                        <li>
+                            <strong>id:</strong> {{ question.content_id }}<br>
+                            <strong>質問:</strong> {{ question.question }}<br>
+                            <strong>回答:</strong> {{ question.answer }}
+                        </li>
+                    {% endfor %}
                 </div>
             </div>
 
