@@ -29,12 +29,17 @@ class StructedToc(BaseModel):
     contents: list[Content]
 
 class Question(BaseModel):
+    parent_num: int
     content_id: int
     question: str
     answer: str
 
 class QuestionList(BaseModel):
     questions: list[Question]
+
+class ConversationContent(BaseModel):
+    review: str
+    questions: QuestionList
 
 
 
@@ -160,7 +165,7 @@ def generate_structed_questions(structed_toc, document):
     questions = []
     client = OpenAI()
     messages = [
-            {'role': 'system', 'content': f"日本語でユーザのメッセージは目次とその概要です。目次の各テーマに対する質問とその回答を5個ずつ作成して。ただし、作成する質問に対する答えが以下の文章に含まれるようにして。\n {document.text_content}"}
+            {'role': 'system', 'content': f"日本語でユーザのメッセージは目次とその概要です。目次の各テーマに対する質問とその回答を5個ずつ作成して。ただし、作成する質問に対する答えが以下の文章に含まれるようにして。また、parent_numは-1にして\n {document.text_content}"}
         ]
     for content in structed_toc.contents:
         messages.append({'role': 'user', 'content': f"id:{content.id} title:{content.title} content.description\n"})
@@ -203,6 +208,20 @@ def generate_toc(text):
     )
     toc= response.choices[0].message.content
     return toc
+
+def generate_conversation_content(document, user_message):
+    client = OpenAI()
+
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o-mini-2024-07-18",
+        messages=[
+            {'role': 'system', 'content': f"日本語でユーザの入力内容を以下のAIの回答と比較して評価して。また、元の質問内容をさらに深堀する質問を3つ作成してください。また、回答を生成する際は以下のpdfの情報を参考にしてください。\n{document.text_content}"},
+            {'role': 'user', 'content': f"質問:{document.question_list['questions'][document.question_num]['question']}\nAIの回答:{document.question_list['questions'][document.question_num]['answer']}\nユーザの回答:{user_message}"}
+        ],
+        response_format=ConversationContent
+    )
+    conversation_content = response.choices[0].message.parsed
+    return conversation_content
 
 
 def summarize_text(text, points=None, model="gpt-4o"):
@@ -267,18 +286,68 @@ def chat_with_ai(request, document_id):
 
         try:
             if document.question_num > 8:
-                document.question_progress = 0
-                document.question_num = 0
+                # document.question_progress = 0
+                # document.question_num = 0
+                # document.save()
+                # return JsonResponse({'response': '回答の評価と質問の深堀り'})
+
+
+                # past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
+                # messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下の情報を参考にしてください。{document.text_content}"}]
+                # #past_interactionsの中で最も新しいaiのメッセージを取得
+                # if len(past_interactions) > 0:
+                #     ai_last_message = past_interactions.filter(role='ai').last().message
+
+                # messages.append({"role": "assistant", "content": ai_last_message})
+                # messages.append({"role": "user", "content": f"質問に対する以下のユーザの回答を深ぼる質問をhtml形式で一つ作成して{user_message}"})
+
+                
+                # client = OpenAI()
+                # model="gpt-4o-mini"
+                # # ChatGPT APIの呼び出し
+                # response = client.chat.completions.create(
+                #     model=model,
+                #     messages=messages,
+                #     # max_tokens=100,  # 要約結果のトークン数の制限
+                #     temperature=0.5,  # 出力の多様性の調整
+                #     # response_format=Evaluation,
+                # )
+                # # 返答メッセージの抽出
+                # ai_message = response.choices[0].message.content
+                # relevant_sentences = find_relevant_sentences(ai_message)
+                # #関連度順にソート
+                # relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
+
+                # sentences = SENTENCE.objects.all().values_list('sentence', flat=True)
+
+                # #最も関連度の高いページを取得
+                # sentence = relevant_sentences[0][0]
+                # ai_message = f"{ai_message}\n\n関連する文章: {sentences[sentence]}"
+
+                # # AIのメッセージを保存
+                # Interaction.objects.create(document=document, role='ai', message=ai_message)
+
+                conversation_content = generate_conversation_content(document, user_message)
+                ai_message = f"AIの回答:{document.question_list['questions'][document.question_num]['answer']}\n"
+                ai_message = ai_message + conversation_content.review
+
+                new_question_list = conversation_content.questions.dict()
+                document.question_list['questions'].extend(new_question_list['questions'])
                 document.save()
-                return JsonResponse({'response': '回答の評価と質問の深堀り'})
+
+                Interaction.objects.create(document=document, role='ai', message=ai_message)
+
+
+                return JsonResponse({'response': ai_message})
             else:
                 past_interactions = Interaction.objects.filter(document=document).order_by('timestamp')
-                messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下のpdfに書かれていた情報を参考にしてください。{document.text_content}"}]
+                messages = [{"role": "system", "content": f"あなたは専門家です。日本語で出力してください。ただし、回答の際には以下の情報を参考にしてください。{document.text_content}"}]
                 #past_interactionsの中で最も新しいaiのメッセージを取得
                 if len(past_interactions) > 0:
                     ai_last_message = past_interactions.filter(role='ai').last().message
 
                 messages.append({"role": "assistant", "content": ai_last_message})
+
 
                 # for interaction in past_interactions:
                 #     if interaction.role == 'ai':

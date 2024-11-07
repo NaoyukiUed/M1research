@@ -7,6 +7,7 @@ class Document(models.Model):
     text_content = models.TextField(blank=True)
     text_summary = models.TextField(blank=True)
     question_list = models.JSONField(default=list, blank=True)
+    asked_question_list = models.JSONField(default=list, blank=True)
     question_num = models.IntegerField(default=0,blank=True)
     question_progress = models.IntegerField(default=0,blank=True)
     subquestion_list = models.JSONField(default=list, blank=True)
