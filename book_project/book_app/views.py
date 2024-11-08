@@ -296,8 +296,7 @@ def chat_with_ai(request, document_id):
         
         conversation_content = generate_conversation_content(document, user_message)
         question = document.question_stack.pop()
-        ai_message = f"質問:{question['question']}\nAIの回答:{question['answer']}\n"
-        ai_message = ai_message + conversation_content.review
+        ai_message = f"<h2>質問</h2><div>{question['question']}</div><h2>AIの回答</h2><div>{question['answer']}</div><h2>ユーザの回答の評価</h2><div>{conversation_content.review}</div>"
         document.save()
 
         questions = conversation_content.questions
@@ -312,8 +311,7 @@ def chat_with_ai(request, document_id):
         sentences = SENTENCE.objects.all().values_list('sentence', flat=True)
         sentence = relevant_sentences[0][0]
         
-        ai_message = f"{ai_message}\n\n次の質問:{new_question['question']}"
-        ai_message = f"{ai_message}\n\n関連する文章: {sentences[sentence]}"
+        ai_message = f"{ai_message}<h2>次の質問</h2><div>{new_question['question']}</div><h2>関連する文章</h2><div>{sentences[sentence]}</div>"
 
         
         Interaction.objects.create(document=document, role='ai', message=ai_message)
