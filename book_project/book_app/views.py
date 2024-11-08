@@ -32,7 +32,9 @@ class Question(BaseModel):
     child_num: list[int]
     content_id: int
     question: str
+    question_embeddingf: list[float]
     answer: str
+    answer_embedding: list[float]
 
 class QuestionList(BaseModel):
     questions: list[Question]
@@ -40,6 +42,12 @@ class QuestionList(BaseModel):
 class ConversationContent(BaseModel):
     review: str
     questions: QuestionList
+
+class TranslatedText(BaseModel):
+    text: str
+
+class TranslatedTexts(BaseModel):
+    texts: list[TranslatedText]
 
 def clean_text(text):
     cleaned_text = re.sub(r'\[\d+(\-\d+)?\]', '', text)  # [数字]を削除
@@ -90,12 +98,47 @@ def upload_pdf(request):
             document.question_num = 0
             structed_toc = generate_structed_toc(text_content)
             document.structed_toc = structed_toc.dict()
+            document.save()
+
+            chunks = chunk_text_by_period(text_content)
+            chunks = translate_text(chunks)
+            
+            for i,chunk in enumerate(chunks.texts):
+                print(i)
+                embedding = get_embedding(chunk.text)
+                SENTENCE.objects.create(sentence=chunk.text, document=document, embedding=embedding.tolist())
+
+            
 
             questions = generate_structed_questions(structed_toc, document)
             document.question_list = questions.dict()
-            for child in reversed(questions.dict()['questions']):
-                document.question_stack.append(child)
             document.save()
+            for child in reversed(questions.dict()['questions']):
+                print(child['question'])
+                question_embedding = get_embedding(child['question'])
+                answer_embedding = get_embedding(child['answer'])
+
+                # similar_sentences = find_similar_sentences(document.question_stack, question_embedding)
+                # similar_sentences = sorted(similar_sentences, key=lambda x: x[1], reverse=True)
+                # if len(similar_sentences) == 0:
+                #     continue
+                # best_similarity = similar_sentences[0][1]
+                # if best_similarity > 0.8:
+                #     continue
+
+                similar_answers = find_relevant_sentences(document, child['answer'])
+                # similar_answers = sorted(similar_answers, key=lambda x: x[1], reverse=True)
+                if len(similar_answers) == 0:
+                    continue
+                # best_similarity = similar_answers[0][1]
+                # if best_similarity < 0.6:
+                #     continue
+                child['question_embedding'] = question_embedding.tolist()
+                child['answer_embedding'] = answer_embedding.tolist()
+                document.question_stack.append(child)
+                document.save()
+
+                
 
             # toc = ''
             # for content in structed_toc.contents:
@@ -103,14 +146,10 @@ def upload_pdf(request):
             #     toc = toc + f'<br><p>{content.description}</p>'
             # document.toc = toc
 
-            document.save()  # データベースに保存
+            # document.save()  # データベースに保存
 
 
-            chunks = chunk_text_by_period(text_content)
-            for i,chunk in enumerate(chunks):
-                print(i)
-                embedding = get_embedding(chunk)
-                SENTENCE.objects.create(sentence=chunk, document=document, embedding=embedding.tolist())
+            
 
             
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
@@ -171,6 +210,23 @@ def find_relevant_sentences(document, question):
     
     return similar_sentences
 
+def translate_text(texts):
+    client = OpenAI()
+    messages = [
+        {'role': 'system', 'content': '以下の文章をそれぞれ日本語に翻訳してください: '}
+    ]
+
+    for text in texts:
+        messages.append({'role': 'user', 'content': text})
+    
+    response = client.beta.chat.completions.parse(
+        model = 'gpt-4o-mini',
+        messages = messages,
+        response_format=TranslatedTexts
+    )
+    translated_text = response.choices[0].message.parsed
+    return translated_text
+
 def generate_structed_questions(structed_toc, document):
     questions = []
     client = OpenAI()
@@ -195,7 +251,7 @@ def generate_structed_toc(text):
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini-2024-07-18",
         messages=[
-            {'role': 'system', 'content': '日本語でユーザのメッセージの目次とその概要をhtml形式で作成して'},
+            {'role': 'system', 'content': '日本語でユーザのメッセージの目次とその概要をhtml形式で日本語で作成して'},
             {'role': 'user', 'content': text}
         ],
         response_format=StructedToc
@@ -211,7 +267,7 @@ def generate_toc(text):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {'role': 'system', 'content': '日本語でユーザのメッセージの目次とその概要をhtml形式で作成して'},
+            {'role': 'system', 'content': '日本語でユーザのメッセージの目次とその概要をhtml形式で日本語で作成して'},
             {'role': 'user', 'content': text}
         ],
         temperature=0.5
@@ -283,27 +339,60 @@ def chat_with_ai(request, document_id):
         user_message = data.get('message', '')
 
         document = Document.objects.get(pk=document_id)
+        
+        print(document.question_progress)
 
         Interaction.objects.create(document=document, role='user', message=user_message)
 
         if document.question_progress == 0:
-            ai_message = document.question_list['questions'][document.question_num]['question']
+            if len(document.question_stack) == 0:
+                ai_message = f"質問のスタックが空です。"
+                return JsonResponse({'response': ai_message})
+            ai_message = document.question_stack[-1]['question']
             Interaction.objects.create(document=document, role='ai', message=ai_message)
             document.question_progress = 1
             document.save()
             return JsonResponse({'response': ai_message})
         
         conversation_content = generate_conversation_content(document, user_message)
+        print(conversation_content)
         question = document.question_stack.pop()
         ai_message = f"<h2>質問</h2><div>{question['question']}</div><h2>AIの回答</h2><div>{question['answer']}</div><h2>ユーザの回答の評価</h2><div>{conversation_content.review}</div>"
         document.save()
 
+        if len(document.question_stack) == 0:
+            return JsonResponse({'response': ai_message})
+
         questions = conversation_content.questions
         # document.question_list = questions.dict()
         for child in reversed(questions.dict()['questions']):
-            document.question_stack.append(child)
-        document.save()
+            question_embedding = get_embedding(child['question'])
+            answer_embedding = get_embedding(child['answer'])
 
+            # similar_sentences = find_similar_sentences(document.question_stack, question_embedding)
+            # similar_sentences = sorted(similar_sentences, key=lambda x: x[1], reverse=True)
+            # print(similar_sentences)
+            # if len(similar_sentences) == 0:
+            #     continue
+            # best_similarity = similar_sentences[0][1]
+            # if best_similarity > 0.8:
+            #     continue
+
+            similar_answers = find_relevant_sentences(document, child['answer'])
+            # similar_answers = sorted(similar_answers, key=lambda x: x[1], reverse=True)
+            if len(similar_answers) == 0:
+                continue
+            # best_similarity = similar_answers[0][1]
+            # if best_similarity < 0.6:
+            #     continue
+
+            child['question_embedding'] = question_embedding.tolist()
+            child['answer_embedding'] = answer_embedding.tolist()
+            document.question_stack.append(child)
+            document.save()
+
+        if len(document.question_stack) == 0:
+            return JsonResponse({'response': ai_message})
         new_question = document.question_stack[-1]
         relevant_sentences = find_relevant_sentences(document, new_question['answer'])
         relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
