@@ -41,7 +41,9 @@ class ConversationContent(BaseModel):
     review: str
     questions: QuestionList
 
-
+def clean_text(text):
+    cleaned_text = re.sub(r'\[\d+(\-\d+)?\]', '', text)  # [数字]を削除
+    return cleaned_text
 
 #ピリオドによるチャンキング
 def chunk_sentences(text):
@@ -79,6 +81,7 @@ def upload_pdf(request):
             # PDFから文字データを抽出
             pdf_file = request.FILES['pdf_file']
             text_content = extract_text_from_pdf(pdf_file)
+            text_content = clean_text(text_content)
             text_content = text_content.replace('\n', '')
             document.text_content = text_content  # 抽出した文字データを保存
             # summary = summarize_text(text_content, points = points)
@@ -130,11 +133,16 @@ def extract_text_from_pdf(pdf_file):
 def get_embeddings(texts, model='text-embedding-3-small'):
     client = OpenAI()
     embeddings = []
-    for text in texts:
-        text = text.replace('\n','')
-        response = client.embeddings.create(input = [text], model = model).data[0].embedding
+    chunks = chunk_sentences(texts)
+    for chunk in chunks:
+        response = client.embeddings.create(input = [chunk], model = model).data[0].embedding
         embeddings.append(response)
     return np.array(embeddings)
+    # for text in texts:
+    #     text = text.replace('\n','')
+    #     response = client.embeddings.create(input = [text], model = model).data[0].embedding
+    #     embeddings.append(response)
+    # return np.array(embeddings)
 
 def get_embedding(question,model='text-embedding-3-small'):
     client = OpenAI()
@@ -286,36 +294,36 @@ def chat_with_ai(request, document_id):
             document.save()
             return JsonResponse({'response': ai_message})
         
-        try:
-            conversation_content = generate_conversation_content(document, user_message)
-            question = document.question_stack.pop()
-            ai_message = f"質問:{question['question']}\nAIの回答:{question['answer']}\n"
-            ai_message = ai_message + conversation_content.review
-            Interaction.objects.create(document=document, role='ai', message=ai_message)
-            document.save()
+        conversation_content = generate_conversation_content(document, user_message)
+        question = document.question_stack.pop()
+        ai_message = f"質問:{question['question']}\nAIの回答:{question['answer']}\n"
+        ai_message = ai_message + conversation_content.review
+        document.save()
 
-            questions = conversation_content.questions
-            # document.question_list = questions.dict()
-            for child in reversed(questions.dict()['questions']):
-                document.question_stack.append(child)
-            document.save()
+        questions = conversation_content.questions
+        # document.question_list = questions.dict()
+        for child in reversed(questions.dict()['questions']):
+            document.question_stack.append(child)
+        document.save()
 
-            new_question = document.question_stack[-1]
-            relevant_sentences = find_relevant_sentences(new_question['answer'])
-            relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
-            sentences = SENTENCE.objects.all().values_list('sentence', flat=True)
-            sentence = relevant_sentences[0][0]
-            
-            ai_message = f"{ai_message}\n\n次の質問:{new_question['question']}"
-            ai_message = f"{ai_message}\n\n関連する文章: {sentences[sentence]}"
-
-            new_question_list = conversation_content.questions.dict()
-            document.question_list['questions'].extend(new_question_list['questions'])
-            document.save()
-            return JsonResponse({'response': ai_message})
+        new_question = document.question_stack[-1]
+        relevant_sentences = find_relevant_sentences(new_question['answer'])
+        relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
+        sentences = SENTENCE.objects.all().values_list('sentence', flat=True)
+        sentence = relevant_sentences[0][0]
         
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+        ai_message = f"{ai_message}\n\n次の質問:{new_question['question']}"
+        ai_message = f"{ai_message}\n\n関連する文章: {sentences[sentence]}"
+
+        
+        Interaction.objects.create(document=document, role='ai', message=ai_message)
+
+        new_question_list = conversation_content.questions.dict()
+        document.question_list['questions'].extend(new_question_list['questions'])
+        document.save()
+        return JsonResponse({'response': ai_message})
+        
+        
 
 
 # @csrf_exempt  # 開発時のみ推奨。本番環境ではCSRFトークンを適切に処理

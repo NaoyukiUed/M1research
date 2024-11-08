@@ -113,10 +113,10 @@
                 <h4>PDFの要約</h4>
                 <div id="summary-container" class="summary" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto;">
                     {% for content in document.structed_toc.contents %}
-                        <li>
-                            <strong>タイトル:</strong> {{ content.title }}<br>
-                            <strong>説明:</strong> {{ content.description }}
-                        </li>
+                        <div>
+                            <h2> {{ content.title }}</h2>
+                            <p>{{ content.description }}</p>
+                        </div>
                     {% endfor %}
                     
                 </div>

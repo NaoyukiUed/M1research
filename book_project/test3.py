@@ -39,6 +39,8 @@ text_content = extract_text_from_pdf(pdf_file_path)
 cleaned_text = clean_text(text_content)
 print(f"Total periods: {count_periods(cleaned_text)}")
 chunks = chunk_text_by_period(cleaned_text)
+for chunk in chunks:
+    print(len(chunk))
 print(f"Total chunks: {len(chunks)}")
 
 # 結果を表示
