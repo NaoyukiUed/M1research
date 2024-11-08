@@ -107,11 +107,10 @@ def upload_pdf(request):
 
 
             chunks = chunk_text_by_period(text_content)
-            print(len(chunks))
-            # for i,chunk in enumerate(chunks):
-            #     print(i)
-            #     embedding = get_embedding(chunk)
-            #     SENTENCE.objects.create(sentence=chunk, document=document, embedding=embedding.tolist())
+            for i,chunk in enumerate(chunks):
+                print(i)
+                embedding = get_embedding(chunk)
+                SENTENCE.objects.create(sentence=chunk, document=document, embedding=embedding.tolist())
 
             
             return redirect('pdf_list')  # アップロード後に一覧ページへリダイレクト
@@ -160,9 +159,9 @@ def find_similar_sentences(sentence_embeddings, question_embedding, threshold=0.
             similar_sentences.append((i + 1, similarity))  # ページ番号は1から始まる
     return similar_sentences
 
-def find_relevant_sentences(question):
+def find_relevant_sentences(document, question):
 
-    sentence_embeddings = SENTENCE.objects.all().values_list('embedding', flat=True)
+    sentence_embeddings = SENTENCE.objects.filter(document=document).values_list('embedding', flat=True)
     
     # 3. 質問の埋め込みを作成
     question_embedding = get_embedding(question)
@@ -306,9 +305,9 @@ def chat_with_ai(request, document_id):
         document.save()
 
         new_question = document.question_stack[-1]
-        relevant_sentences = find_relevant_sentences(new_question['answer'])
+        relevant_sentences = find_relevant_sentences(document, new_question['answer'])
         relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
-        sentences = SENTENCE.objects.all().values_list('sentence', flat=True)
+        sentences = SENTENCE.objects.filter(document=document).values_list('sentence', flat=True)
         sentence = relevant_sentences[0][0]
         
         ai_message = f"{ai_message}<h2>次の質問</h2><div>{new_question['question']}</div><h2>関連する文章</h2><div>{sentences[sentence]}</div>"
