@@ -190,12 +190,12 @@ def get_embedding(question,model='text-embedding-3-small'):
 def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (norm(vec1) * norm(vec2))
 
-def find_similar_sentences(sentence_embeddings, question_embedding, threshold=0.5):
+def find_similar_sentences(sentence_embeddings, question_embedding, threshold=0.6):
     similar_sentences = []
     for i, sentence_embedding in enumerate(sentence_embeddings):
         similarity = cosine_similarity(sentence_embedding, question_embedding)
         if similarity >= threshold:
-            similar_sentences.append((i + 1, similarity))  # ページ番号は1から始まる
+            similar_sentences.append((i, similarity))  # ページ番号は1から始まる
     return similar_sentences
 
 def find_relevant_sentences(document, question):
@@ -394,12 +394,18 @@ def chat_with_ai(request, document_id):
         if len(document.question_stack) == 0:
             return JsonResponse({'response': ai_message})
         new_question = document.question_stack[-1]
+        print(new_question)
         relevant_sentences = find_relevant_sentences(document, new_question['answer'])
+        print(relevant_sentences)
         relevant_sentences = sorted(relevant_sentences, key=lambda x: x[1], reverse=True)
+        print(relevant_sentences)
         sentences = SENTENCE.objects.filter(document=document).values_list('sentence', flat=True)
-        sentence = relevant_sentences[0][0]
+        # sentence = relevant_sentences[0][0]
         
-        ai_message = f"{ai_message}<h2>次の質問</h2><div>{new_question['question']}</div><h2>関連する文章</h2><div>{sentences[sentence]}</div>"
+        ai_message = f"{ai_message}<h2>次の質問</h2><div>{new_question['question']}</div>"
+
+        for i,sentence in enumerate(relevant_sentences):
+            ai_message = f"{ai_message}<h2>関連する文章{i+1}</h2><div>{sentences[sentence[0]]}</div>"
 
         
         Interaction.objects.create(document=document, role='ai', message=ai_message)
