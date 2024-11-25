@@ -49,17 +49,21 @@ class TranslatedText(BaseModel):
 class TranslatedTexts(BaseModel):
     texts: list[TranslatedText]
 
+#資料の読みやすさのために引用番号を削除
+#input: str output: str
 def clean_text(text):
     cleaned_text = re.sub(r'\[\d+(\-\d+)?\]', '', text)  # [数字]を削除
     return cleaned_text
 
 #ピリオドによるチャンキング
+#input: str output: list[str]
 def chunk_sentences(text):
     # 正規表現を使って文章を文末の句読点で分割する
     sentences = re.split(r'(?<=[.!?]) +', text)
     return sentences
 
 #文字数によるチャンキング
+#input: str output: list[str]
 def chunk_text_by_period(text, max_length=3000):
     chunks = []
     current_chunk = ""
@@ -76,6 +80,7 @@ def chunk_text_by_period(text, max_length=3000):
     
     return chunks
 
+#PDFファイルをアップロードするページのビュー
 def upload_pdf(request):
     if request.method == 'POST':
         form = DocumentForm(request.POST, request.FILES)
@@ -157,10 +162,12 @@ def upload_pdf(request):
         form = DocumentForm()
     return render(request, 'upload_pdf.html', {'form': form})
 
+#PDFファイルの一覧を表示するページのビュー
 def pdf_list(request):
     documents = Document.objects.all()
     return render(request, 'pdf_list.html', {'documents': documents})
 
+#PDFファイルからテキストを抽出し、文字列にする
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ""
@@ -168,6 +175,7 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text() or ""
     return text
 
+#入力された文字列のリストに対する埋め込みのリストを作成
 def get_embeddings(texts, model='text-embedding-3-small'):
     client = OpenAI()
     embeddings = []
@@ -182,14 +190,17 @@ def get_embeddings(texts, model='text-embedding-3-small'):
     #     embeddings.append(response)
     # return np.array(embeddings)
 
+#入力された文字列に対する埋め込みを作成
 def get_embedding(question,model='text-embedding-3-small'):
     client = OpenAI()
     response = client.embeddings.create(input=[question], model=model)
     return np.array(response.data[0].embedding)
 
+#2つのベクトルのコサイン類似度を計算
 def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (norm(vec1) * norm(vec2))
 
+#入力された文章に対する類似度が高いチャンクを抽出する
 def find_similar_sentences(sentence_embeddings, question_embedding, threshold=0.6):
     similar_sentences = []
     for i, sentence_embedding in enumerate(sentence_embeddings):
@@ -198,6 +209,7 @@ def find_similar_sentences(sentence_embeddings, question_embedding, threshold=0.
             similar_sentences.append((i, similarity))  # ページ番号は1から始まる
     return similar_sentences
 
+#指定された文書から関連する文章を抽出する
 def find_relevant_sentences(document, question):
 
     sentence_embeddings = SENTENCE.objects.filter(document=document).values_list('embedding', flat=True)
@@ -210,6 +222,7 @@ def find_relevant_sentences(document, question):
     
     return similar_sentences
 
+#入力された文章を翻訳する
 def translate_text(texts):
     client = OpenAI()
     messages = [
@@ -227,6 +240,7 @@ def translate_text(texts):
     translated_text = response.choices[0].message.parsed
     return translated_text
 
+#QuestionList型の質問リストを生成
 def generate_structed_questions(structed_toc, document):
     questions = []
     client = OpenAI()
@@ -245,6 +259,7 @@ def generate_structed_questions(structed_toc, document):
     return questions
 
 
+#StructuredToc型の目次のリストを生成
 def generate_structed_toc(text):
     client = OpenAI()
 
@@ -260,7 +275,7 @@ def generate_structed_toc(text):
     print(structed_toc)
     return structed_toc
 
-
+#文字列型の目次を作成
 def generate_toc(text):
     client = OpenAI()
 
@@ -275,6 +290,7 @@ def generate_toc(text):
     toc= response.choices[0].message.content
     return toc
 
+#人間の出力に対するAIの出力を生成
 def generate_conversation_content(document, user_message):
     client = OpenAI()
 
@@ -292,7 +308,7 @@ def generate_conversation_content(document, user_message):
     document.save()
     return conversation_content
 
-
+#入力された文書を要約する
 def summarize_text(text, points=None, model="gpt-4o"):
     client = OpenAI()
 
@@ -317,10 +333,12 @@ def summarize_text(text, points=None, model="gpt-4o"):
     return summary
 
 
+#detailページのビュー
 def document_detail(request, pk):
     document = get_object_or_404(Document, pk=pk)
     return render(request, 'document_detail.html', {'document': document})
 
+#ユーザの発言に質問が含まれているかのExistQuesion型を出力
 def analyze_comment(comment):
     client = OpenAI
     completion =client.beta.chat.completions.parse(
@@ -332,6 +350,7 @@ def analyze_comment(comment):
         response_format=ExistQuestion
     )
 
+#ユーザからの入力があったときに呼び出され、AI空の出力を返す
 @csrf_exempt
 def chat_with_ai(request, document_id):
     if request.method == 'POST':
@@ -557,7 +576,7 @@ def chat_with_ai(request, document_id):
 #         except Exception as e:
 #             return JsonResponse({'error': str(e)}, status=500)
 
-# 過去のやり取りを取得するビュー
+# 過去のやり取りを取得する
 def get_chat_history(request, document_id):
     document = Document.objects.get(pk=document_id)
     chat_messages = document.interactions.all().order_by('timestamp')
@@ -567,6 +586,7 @@ def get_chat_history(request, document_id):
     ]
     return JsonResponse({'chat_history': chat_data})
 
+#不要になった資料を削除する
 def document_delete(request, pk):
     document = get_object_or_404(Document, pk=pk)
     if request.method == "POST":
