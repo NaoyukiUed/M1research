@@ -5,14 +5,6 @@ class Document(models.Model):
     pdf_file = models.FileField(upload_to='pdfs/')  # アップロード先のディレクトリを指定
     uploaded_at = models.DateTimeField(auto_now_add=True)
     text_content = models.TextField(blank=True)
-    text_summary = models.TextField(blank=True)
-    question_list = models.JSONField(default=list, blank=True)
-    asked_question_list = models.JSONField(default=list, blank=True)
-    question_num = models.IntegerField(default=0,blank=True)
-    question_progress = models.IntegerField(default=0,blank=True)
-    subquestion_list = models.JSONField(default=list, blank=True)
-    question_stack = models.JSONField(default=list, blank=True)
-    subquestion_num = models.IntegerField(default=0,blank=True)
     structed_toc = models.JSONField(blank=True, default=list)
 
     def __str__(self):

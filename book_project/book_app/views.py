@@ -59,11 +59,6 @@ def upload_pdf(request):
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
             document = form.save(commit=False)  # まだデータベースに保存しない
-            # 知りたいことを取得
-            point_1 = form.cleaned_data.get('point_1', '')
-            point_2 = form.cleaned_data.get('point_2', '')
-            point_3 = form.cleaned_data.get('point_3', '')
-            points = [point_1, point_2, point_3]  # 知りたいことをリストにまとめる
             # PDFから文字データを抽出
             pdf_file = request.FILES['pdf_file']
             text_content = extract_text_from_pdf(pdf_file)
@@ -78,7 +73,7 @@ def upload_pdf(request):
             #最大文字数を設定し、句点ごとで文章を分割
             chunks = chunk_text_by_period(text_content)
 
-            #chunk化された文章をembedding
+            # chunk化された文章をembedding
             print('len(chunks)', len(chunks))
             for i,chunk in enumerate(chunks):
                 if len(chunk) == 0:
@@ -123,8 +118,6 @@ def find_relevant_sentences(document, question):
 
     #指定された文書に対するchunkのembeddingを取得
     sentence_embeddings = SENTENCE.objects.filter(document=document).values_list('embedding', flat=True)
-    # print(SENTENCE.objects.values_list('document', flat=True))
-    # print(sentence_embeddings)
     
     #ユーザの入力を翻訳する
     client = OpenAI()
@@ -234,6 +227,7 @@ def get_chat_history(request, document_id):
 def document_delete(request, pk):
     document = get_object_or_404(Document, pk=pk)
     if request.method == "POST":
+        document.pdf_file.delete()
         document.delete()
         return redirect('pdf_list')  # 削除後、リストページにリダイレクト
     return redirect(reverse('document_detail', args=[pk]))
