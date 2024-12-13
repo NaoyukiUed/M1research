@@ -1,0 +1,11 @@
+# Ignore myenv folder
+myenv/
+db.sqlite3
+media/pdfs/
+*.env
+# Ignore Python virtual environments
+venv/
+*.pyc
+__pycache__/
+
+
