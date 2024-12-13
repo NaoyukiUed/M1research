@@ -22,6 +22,10 @@ myenv/Scripts/activate
 pip install -r requirements.txt
 ```
 エラーメッセージが発生していないか確認する。
+book_project直下に.envという名前のファイルを作成し、その中身を以下のようにする
+```
+OPENAI_API_KEY='OPENAIのAPIKEY'
+```
 以下のコードを実行する
 ```
 python manage.py makemigrations
