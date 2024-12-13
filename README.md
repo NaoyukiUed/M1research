@@ -30,6 +30,9 @@ OPENAI_API_KEY='OPENAIのAPIKEY'
 ```
 python manage.py makemigrations
 python manage.py migrate
+```
+エラーが出ていないことを確認し、以下のコードを実行する
+```
 python manage.py runserver
 ```
 ターミナルにエラーメッセージがなければ[http://127.0.0.1:8000/test/pdfs/](http://127.0.0.1:8000/test/pdfs/)にアクセスする。
